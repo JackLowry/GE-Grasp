@@ -18,31 +18,16 @@ global sample_iteration
 def main(args):
     # --------------- Setup options ---------------
     workspace_limits = np.asarray([[-0.724, -0.276], [-0.224, 0.224], [-0.0001, 0.4]])# Cols: min max, Rows: x y z (define workspace limits in robot coordinates)
-    heightmap_resolution = args.heightmap_resolution
-    random_seed = args.random_seed
-    force_cpu = args.force_cpu
-
+    heightmap_resolution = 0.002
+    force_cpu = False
     # -------------- Testing options --------------
     is_testing = True
-    test_target_seeking = args.test_target_seeking
-    max_test_trials = args.max_test_trials  # Maximum number of test runs per case/scenario
-    max_motion_onecase = args.max_motion_onecase
-
     # ------ Pre-loading and logging options ------
     load_ckpt = args.load_ckpt  # Load pre-trained ckpt of model
-    critic_ckpt_file = os.path.abspath(args.critic_ckpt) if load_ckpt else None
-    continue_logging = args.continue_logging  # Continue logging from previous session
-    save_visualizations = args.save_visualizations
+    critic_ckpt_file = os.path.abspath("critic_ckpt")
 
     # ------ Initialize some status variables -----
-    seeking_target = False,
-    margin_occupy_ratio = None,
-    margin_occupy_norm = None,
-    best_grasp_pix_ind = None,
-    best_pix_ind = None,
-    grasp_succeeded = False,
-    grasp_effective = False,
-    target_grasped = False
+    best_grasp_pix_ind = None
 
     color_img = cv2.imread("/home/jack/research/swiperl/real_world_prehensile_pics/normal_scene_processed/3_rgb.png")
     depth_img = np.load("/home/jack/research/swiperl/real_world_prehensile_pics/normal_scene_processed/3depth.npy")
@@ -121,12 +106,13 @@ def main(args):
     best_push_mask = pushes[best_push_ind][2]
     best_push_start_point = pushes[best_push_ind][0]
     best_push_rot_ind = pushes[best_push_ind][1]
-    # push_start_position = point_cloud_reshaped[best_push_start_point[0], best_push_start_point[1]]
+    point_cloud_reshaped = point_cloud.reshape((224, 224, -1))
+    push_start_position = point_cloud_reshaped[best_push_start_point[0], best_push_start_point[1]]
 
     # Choose best grasp
     grasps, grasp_mask_heightmaps, num_grasps = grasp_generator(target_center, point_cloud, valid_depth_heightmap)
     evaluator.model.load_state_dict(torch.load('saved_models/grasping.pkl'))
-
+    
     ########### Coordinating between pushing and grasping ###########
     if num_grasps == 0:
         primitive_action = 'push'
@@ -185,6 +171,8 @@ def main(args):
     ax[3].set_title("Target Object Segmentation Heightmap")
     fig.suptitle(f"Chosen Action: {primitive_action}")
     plt.show()
+
+
 
 
 if __name__ == '__main__':
